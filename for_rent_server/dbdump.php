@@ -1,4 +1,9 @@
 <?php
+
+/*
+This Script will dump MySQL data when using Shared Rental Server
+*/
+
 $dbHost = 'SERVER HOST';
 $dbUser = 'USERNAME';
 $dbPass = 'PASSWORD';
