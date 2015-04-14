@@ -9,15 +9,19 @@ iptables -P INPUT   DROP   # 受信はすべて破棄
 iptables -P OUTPUT  ACCEPT # 送信はすべて許可
 iptables -P FORWARD DROP   # 通過はすべて破棄
 
+# 内部から行ったアクセスに対する外部からの返答アクセスを許可
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# etc
+iptables -A INPUT -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG NONE -j DROP
+iptables -A INPUT -p tcp -m tcp ! --tcp-flags FIN,SYN,RST,ACK SYN -m state --state NEW -j DROP
+iptables -A INPUT -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN,SYN,RST,PSH,ACK,URG -j DROP
+
 # 自ホストからのアクセスをすべて許可
 iptables -A INPUT -i lo -j ACCEPT
 
 # 内部からのアクセスをすべて許可
 iptables -A INPUT -s $LOCALNET -j ACCEPT
-
-# 内部から行ったアクセスに対する外部からの返答アクセスを許可
-iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
-
 
 # ブロードキャストアドレス宛pingには応答しない
 # ※Smurf攻撃対策
@@ -86,26 +90,9 @@ iptables -A INPUT -p tcp --dport 80 -j ACCEPT
 # ※Webサーバーを公開する場合のみ
 iptables -A INPUT -p tcp --dport 443 -j ACCEPT
 
-# 外部からのTCP21番ポート(FTP)へのアクセスを日本からのみ許可
-# ※FTPサーバーを公開する場合のみ
-iptables -A INPUT -p tcp --dport 21 -j ACCEPT
-
-# 外部からのPASV用ポート(FTP-DATA)へのアクセスを日本からのみ許可
-# ※FTPサーバーを公開する場合のみ
-# ※PASV用ポート60000:60030は当サイトの設定例
-iptables -A INPUT -p tcp --dport 60000:60030 -j ACCEPT
-
-# 外部からのTCP25番ポート(SMTP)へのアクセスを許可
-# ※SMTPサーバーを公開する場合のみ
-iptables -A INPUT -p tcp --dport 25 -j ACCEPT
-
-
-# 外部からのUDP1194番ポート(OpenVPN)へのアクセスを日本からのみ許可
-# ※OpenVPNサーバーを公開する場合のみ
-iptables -A INPUT -p tcp --dport 4949 -j ACCEPT
-iptables -A INPUT -p udp --dport 4949 -j ACCEPT
 iptables -A INPUT -p tcp --dport 10050 -j ACCEPT
-iptables -A INPUT -p udp --dport 10050 -j ACCEPT
+iptables -A INPUT -p tcp --dport 10051 -j ACCEPT
+
 
 #----------------------------------------------------------#
 # 各種サービスを公開する場合の設定(ここまで)               #
@@ -115,14 +102,5 @@ iptables -A INPUT -p udp --dport 10050 -j ACCEPT
 # サーバー再起動時にも上記設定が有効となるようにルールを保存
 /etc/rc.d/init.d/iptables save
 
-# iptables 1.4.3.1バグ対処
-iptables -V|grep 1.4.3.1 > /dev/null 2>&1
-if [ $? -eq 0 ]; then
-    sed -i s/"-s \!"/"\! -s"/g /etc/sysconfig/iptables
-    sed -i s/"-d \!"/"\! -d"/g /etc/sysconfig/iptables
-fi
-
 # ファイアウォール起動
 /etc/rc.d/init.d/iptables start
-
-
